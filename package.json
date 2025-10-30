@@ -2,15 +2,28 @@
   "name": "express-hello-world",
   "version": "1.0.0",
   "description": "Express Hello World on Render",
-  "main": "app.js",
+  "main": "index.js",
   "repository": "https://github.com/render-examples/express-hello-world",
   "author": "Render Developers",
   "license": "MIT",
   "private": false,
   "scripts": {
-    "start": "node app.js"
+    "start": "node index.js"
   },
   "dependencies": {
-    "express": "^5.0.0"
+    "bcrypt": "^5.1.1",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^5.0.0",
+    "express-mongo-sanitize": "^2.2.0",
+    "express-rate-limit": "^6.10.0",
+    "express-session": "^1.17.3",
+    "express-validator": "^7.0.1",
+    "express-xss-sanitizer": "^1.1.6",
+    "joi": "^17.10.1",
+    "mongoose": "^7.5.0",
+    "nodemon": "^3.0.1",
+    "winston": "^3.10.0"
   }
 }
