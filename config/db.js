@@ -1,13 +1,17 @@
-const mongoose = require("mongoose");
-require("dotenv").config();
+/**
+ * Database Configuration - Sequelize ORM
+ *
+ * This file exports the Sequelize connection and connectDB function.
+ * Sequelize handles:
+ * - Connection pooling
+ * - Table creation/synchronization
+ * - Migrations (if you set them up)
+ */
 
-const connectDB = async () => {
-    try {
-        await mongoose.connect(process.env.MONGO_URL);
-        console.log("DB Connection Successful!");
-    } catch (error) {
-        console.error("DB Connection Failed:", error);
-    }
-};
+const { sequelize, connectDB } = require('./sequelize');
 
-module.exports = connectDB;
+module.exports = { sequelize, connectDB };
+
+// Note: For backward compatibility, you can also export pool
+// but it's not needed with Sequelize
+module.exports.pool = sequelize;

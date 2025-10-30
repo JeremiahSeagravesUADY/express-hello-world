@@ -1,4 +1,5 @@
 const Dentist = require('../models/Dentist');
+const { ValidationError, UniqueConstraintError, Op } = require('sequelize');
 
 const DentistController = {
     // Create a new dentist
@@ -7,7 +8,7 @@ const DentistController = {
         try {
             const { name, specialization, phoneNumber, email, username, password } = req.body;
 
-            const newDentist = new Dentist({
+            const dentist = await Dentist.create({
                 name,
                 specialization,
                 phoneNumber,
@@ -16,23 +17,29 @@ const DentistController = {
                 password
             });
 
-            const savedDentist = await newDentist.save();
-
-            // Remove password from response
-            const dentistResponse = savedDentist.toObject();
-            delete dentistResponse.password;
-
-            console.log('Dentist created successfully:', savedDentist._id);
+            console.log('Dentist created successfully:', dentist.id);
             res.status(201).json({
                 success: true,
-                data: dentistResponse
+                data: dentist.toJSON() // Automatically excludes password
             });
         } catch (error) {
-            if (error.code === 11000) {
-                console.error('Duplicate key error:', error.keyValue);
+            // Handle unique constraint violations
+            if (error instanceof UniqueConstraintError) {
+                const field = error.errors[0]?.path || 'field';
+                console.error('Duplicate key error:', field);
                 return res.status(400).json({
                     success: false,
-                    message: 'A dentist with this email or username already exists'
+                    message: `A dentist with this ${field} already exists`
+                });
+            }
+
+            // Handle validation errors
+            if (error instanceof ValidationError) {
+                console.error('Validation error:', error.errors.map(e => e.message));
+                return res.status(400).json({
+                    success: false,
+                    message: 'Validation error',
+                    errors: error.errors.map(e => e.message)
                 });
             }
 
@@ -51,7 +58,9 @@ const DentistController = {
         console.log('Fetching dentist by ID:', id);
 
         try {
-            const dentist = await Dentist.findById(id).select('-password');
+            const dentist = await Dentist.findByPk(id, {
+                attributes: { exclude: ['password'] }
+            });
 
             if (!dentist) {
                 console.log('Dentist not found with ID:', id);
@@ -85,32 +94,35 @@ const DentistController = {
         console.log(`Fetching dentists - pageNumber:${pageNumber}, pageSize:${pageSize}, filters:`, { name, email });
 
         try {
-            // Build filter object
-            const filter = {};
-            if (name) filter.name = { $regex: name, $options: 'i' }; // Case-insensitive name search
-            if (email) filter.email = { $regex: email, $options: 'i' }; // Case-insensitive email search
+            // Build where clause
+            const where = {};
+            if (name) {
+                where.name = { [Op.like]: `%${name}%` };
+            }
+            if (email) {
+                where.email = { [Op.like]: `%${email}%` };
+            }
 
-            const skip = (pageNumber - 1) * pageSize;
-            const total = await Dentist.countDocuments(filter);
+            const { count, rows } = await Dentist.findAndCountAll({
+                where,
+                attributes: { exclude: ['password'] },
+                limit: pageSize,
+                offset: (pageNumber - 1) * pageSize,
+                order: [['createdAt', 'DESC']]
+            });
 
-            const dentists = await Dentist.find(filter)
-                .select('-password')
-                .skip(skip)
-                .limit(pageSize)
-                .sort({ createdAt: -1 });
-
-            console.log(`Retrieved ${dentists.length} dentists out of ${total} total matching filters`);
+            console.log(`Retrieved ${rows.length} dentists out of ${count} total matching filters`);
             res.status(200).json({
                 success: true,
-                count: dentists.length,
+                count: rows.length,
                 pagination: {
-                    total,
+                    total: count,
                     pageNumber,
                     pageSize,
-                    pages: Math.ceil(total / pageSize)
+                    pages: Math.ceil(count / pageSize)
                 },
                 filters: { name, email },
-                data: dentists
+                data: rows
             });
         } catch (error) {
             console.error('Error retrieving dentists:', error.message);
